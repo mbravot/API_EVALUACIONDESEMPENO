@@ -40,13 +40,19 @@ def create_app():
     from blueprints.usuarios import usuarios_bp
     from blueprints.auth import auth_bp
     from blueprints.opciones import opciones_bp
+    from blueprints.evaluador import evaluador_bp
+    from blueprints.funciones import funciones_bp
+    from blueprints.cargos import cargos_bp
+    from blueprints.competencias import competencias_bp
 
-    
     # Registrar blueprints
-    
     app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
     app.register_blueprint(opciones_bp, url_prefix="/api/opciones")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(evaluador_bp, url_prefix="/api/evaluador")
+    app.register_blueprint(funciones_bp, url_prefix="/api/funciones")
+    app.register_blueprint(cargos_bp, url_prefix="/api/cargos")
+    app.register_blueprint(competencias_bp, url_prefix="/api/competencias")
 
     # Crear un nuevo blueprint para las rutas raíz
     root_bp = Blueprint('root_bp', __name__)
