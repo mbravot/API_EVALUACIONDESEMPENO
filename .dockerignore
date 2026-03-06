@@ -1,0 +1,34 @@
+# Entorno virtual y Python local
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Git y IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# No subir .env al build (usar variables/secretos en Cloud Run)
+.env
+.env.*
+!.env.example
+
+# Tests y docs opcionales
+tests/
+*.md
+!README.md
+
+# Scripts locales
+subir_github.bat
+*.bat
+
+# Cursor / proyecto
+.cursor/
+*.txt
+!requirements.txt
