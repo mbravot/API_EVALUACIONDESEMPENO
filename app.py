@@ -14,17 +14,20 @@ logger = logging.getLogger(__name__)
 def create_app():
     app = Flask(__name__)
     
-    # Configurar CORS
+    # CORS: permitir front en Firebase (y otros). ALLOWED_ORIGINS=url1,url2 o "*" para todos
+    allowed = os.getenv("ALLOWED_ORIGINS", "").strip()
+    if allowed == "*" or not allowed:
+        origins_list = "*"
+        supports_credentials = False
+    else:
+        origins_list = [o.strip() for o in allowed.split(",") if o.strip()]
+        supports_credentials = True
     CORS(app, resources={
         r"/*": {
-            "origins": [
-                "http://localhost:*", "http://127.0.0.1:*",
-                "http://192.168.1.52:*", "http://192.168.1.208:*", "http://192.168.1.60:*",
-                "https://*.run.app", "https://*.web.app", "https://*.firebaseapp.com",
-            ],
+            "origins": origins_list,
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": True,
+            "supports_credentials": supports_credentials,
             "expose_headers": ["Content-Type", "Authorization"],
             "max_age": 3600
         }

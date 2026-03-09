@@ -69,6 +69,7 @@ Configúralas en el servicio (Cloud Run → tu servicio → **Variables and secr
 | `DB_PASSWORD`  | Contraseña (usa **Secret Manager**)  |
 | `DB_NAME`      | Nombre de la base                    |
 | `JWT_SECRET_KEY` | Clave JWT (usa **Secret Manager**) |
+| `ALLOWED_ORIGINS` | Opcional. Orígenes CORS separados por coma (ej. `https://tu-app.web.app`). Si no se define, se permite `*` (cualquier origen, p. ej. front en Firebase). |
 
 `PORT` la define Cloud Run (no hace falta configurarla).
 
