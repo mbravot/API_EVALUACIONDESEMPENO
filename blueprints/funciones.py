@@ -130,7 +130,7 @@ def eliminar_funcion(id):
 
 
 # --- Funciones por cargo (rrhh_pivot_cargofuncion + rrhh_dim_funcion) ---
-
+# Listar todas las funciones asignadas a un cargo
 @funciones_bp.route('/cargo/<int:id_cargo>', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def listar_funciones_por_cargo(id_cargo):

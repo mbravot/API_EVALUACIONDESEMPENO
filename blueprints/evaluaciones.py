@@ -15,7 +15,7 @@ def _nombre_completo(r, prefijo):
     m = r.get(prefijo + '_apellido_materno') or ''
     return ' '.join(filter(None, [n, p, m])).strip() or None
 
-
+# Listar todas las evaluaciones
 @evaluaciones_bp.route('', methods=['GET', 'OPTIONS'])
 @evaluaciones_bp.route('/', methods=['GET', 'OPTIONS'])
 @jwt_required()

@@ -45,9 +45,11 @@ def create_app():
     from blueprints.cargos import cargos_bp
     from blueprints.competencias import competencias_bp
     from blueprints.evaluaciones import evaluaciones_bp
+    from blueprints.permisos import permisos_bp
 
     # Registrar blueprints
     app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
+    app.register_blueprint(permisos_bp, url_prefix='/api/permisos')
     app.register_blueprint(opciones_bp, url_prefix="/api/opciones")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(evaluador_bp, url_prefix="/api/evaluador")

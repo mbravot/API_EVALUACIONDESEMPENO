@@ -394,7 +394,7 @@ def crear_evaluacion():
         logger.exception("Error en crear_evaluacion")
         return jsonify({"error": str(e)}), 500
 
-
+# Endpoint para actualizar una evaluación
 @evaluador_bp.route('/evaluaciones/<id_evaluacion>', methods=['PUT', 'PATCH', 'OPTIONS'])
 @jwt_required()
 def actualizar_evaluacion(id_evaluacion):
@@ -540,7 +540,7 @@ def actualizar_evaluacion(id_evaluacion):
         logger.exception("Error en actualizar_evaluacion")
         return jsonify({"error": str(e)}), 500
 
-
+# Endpoint para eliminar una evaluación
 @evaluador_bp.route('/evaluaciones/<id_evaluacion>', methods=['DELETE', 'OPTIONS'])
 @jwt_required()
 def eliminar_evaluacion(id_evaluacion):

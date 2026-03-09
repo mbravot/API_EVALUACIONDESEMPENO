@@ -29,7 +29,7 @@ def listar_competencias():
         logger.exception("Error en listar_competencias")
         return jsonify({"error": str(e)}), 500
 
-
+# Obtener una competencia por id
 @competencias_bp.route('/<int:id>', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def obtener_competencia(id):
@@ -50,7 +50,7 @@ def obtener_competencia(id):
         logger.exception("Error en obtener_competencia")
         return jsonify({"error": str(e)}), 500
 
-
+# Crear una nueva competencia
 @competencias_bp.route('', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def crear_competencia():
@@ -76,7 +76,7 @@ def crear_competencia():
         logger.exception("Error en crear_competencia")
         return jsonify({"error": str(e)}), 500
 
-
+# Actualizar una competencia
 @competencias_bp.route('/<int:id>', methods=['PUT', 'OPTIONS'])
 @jwt_required()
 def actualizar_competencia(id):
@@ -110,7 +110,7 @@ def actualizar_competencia(id):
         logger.exception("Error en actualizar_competencia")
         return jsonify({"error": str(e)}), 500
 
-
+# Eliminar una competencia
 @competencias_bp.route('/<int:id>', methods=['DELETE', 'OPTIONS'])
 @jwt_required()
 def eliminar_competencia(id):
@@ -145,7 +145,7 @@ def eliminar_competencia(id):
 
 
 # --- Competencia por nivel (rrhh_dim_competencianivel) ---
-
+# Listar todas las competencias por nivel
 @competencias_bp.route('/niveles', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def listar_competencianiveles():
@@ -192,7 +192,7 @@ def listar_competencianiveles():
         logger.exception("Error en listar_competencianiveles")
         return jsonify({"error": str(e)}), 500
 
-
+# Listar todas las competencias por nivel por id de nivel
 @competencias_bp.route('/niveles/<int:id_nivel>', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def listar_competencianiveles_por_nivel(id_nivel):
@@ -229,7 +229,7 @@ def listar_competencianiveles_por_nivel(id_nivel):
         logger.exception("Error en listar_competencianiveles_por_nivel")
         return jsonify({"error": str(e)}), 500
 
-
+# Crear una nueva competencia por nivel
 @competencias_bp.route('/niveles', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def crear_competencianivel():
@@ -268,7 +268,7 @@ def crear_competencianivel():
         logger.exception("Error en crear_competencianivel")
         return jsonify({"error": str(e)}), 500
 
-
+# Actualizar una competencia por nivel
 @competencias_bp.route('/niveles/<int:id>', methods=['PUT', 'OPTIONS'])
 @jwt_required()
 def actualizar_competencianivel(id):
@@ -310,7 +310,7 @@ def actualizar_competencianivel(id):
         logger.exception("Error en actualizar_competencianivel")
         return jsonify({"error": str(e)}), 500
 
-
+# Eliminar una competencia por nivel
 @competencias_bp.route('/niveles/<int:id>', methods=['DELETE', 'OPTIONS'])
 @jwt_required()
 def eliminar_competencianivel(id):
@@ -345,7 +345,7 @@ def eliminar_competencianivel(id):
 
 
 # --- Asignación competencias a cargo (rrhh_pivot_cargocompetencia) según nivel del cargo ---
-
+# Listar todas las competencias disponibles para un cargo
 @competencias_bp.route('/cargo/<int:id_cargo>/disponibles', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def listar_competencias_disponibles_para_cargo(id_cargo):
@@ -398,7 +398,7 @@ def listar_competencias_disponibles_para_cargo(id_cargo):
         logger.exception("Error en listar_competencias_disponibles_para_cargo")
         return jsonify({"error": str(e)}), 500
 
-
+# Listar todas las competencias asignadas a un cargo
 @competencias_bp.route('/cargo/<int:id_cargo>', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def listar_competencias_por_cargo(id_cargo):
@@ -439,7 +439,7 @@ def listar_competencias_por_cargo(id_cargo):
         logger.exception("Error en listar_competencias_por_cargo")
         return jsonify({"error": str(e)}), 500
 
-
+# Asignar una competencia a un cargo
 @competencias_bp.route('/cargo/<int:id_cargo>', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def asignar_competencia_cargo(id_cargo):
@@ -504,7 +504,7 @@ def asignar_competencia_cargo(id_cargo):
         logger.exception("Error en asignar_competencia_cargo")
         return jsonify({"error": str(e)}), 500
 
-
+# Eliminar la asignación de una competencia a un cargo
 @competencias_bp.route('/asignacion/<int:id>', methods=['DELETE', 'OPTIONS'])
 @jwt_required()
 def eliminar_asignacion_cargo(id):
