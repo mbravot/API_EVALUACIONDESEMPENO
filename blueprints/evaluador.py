@@ -395,6 +395,190 @@ def crear_evaluacion():
         return jsonify({"error": str(e)}), 500
 
 
+@evaluador_bp.route('/evaluaciones/<id_evaluacion>', methods=['PUT', 'PATCH', 'OPTIONS'])
+@jwt_required()
+def actualizar_evaluacion(id_evaluacion):
+    """
+    Actualiza una evaluación existente. Solo el usuario que es id_usuarioevaluador puede editarla.
+    Body: mismos campos que crear (fecha, comentarioevaluador, comentarioevaluado, notafinal, factorbono,
+    firmaevaluador, firmaevaluado, id_sucursal, competencias, funciones, plan_trabajo). Los enviados reemplazan.
+    """
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        usuario_id = get_jwt_identity()
+        if not usuario_id:
+            return jsonify({"error": "Usuario no identificado"}), 401
+        usuario_id = str(usuario_id).strip()
+        data = request.get_json() or {}
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT f.id, f.id_evaluador, f.id_evaluado, f.id_cargoevaluado
+            FROM rrhh_fact_evaluacion f
+            INNER JOIN rrhh_dim_colaboradorevaluacion d
+                ON d.id_evaluador = f.id_evaluador AND d.id_evaluado = f.id_evaluado
+            WHERE f.id = %s AND TRIM(COALESCE(d.id_usuarioevaluador,'')) = TRIM(%s)
+        """, (id_evaluacion, usuario_id))
+        ev = cursor.fetchone()
+        if not ev:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Evaluación no encontrada o no tiene permiso para editarla"}), 404
+
+        id_cargoevaluado = ev['id_cargoevaluado']
+        updates = []
+        params = []
+        if 'fecha' in data and data['fecha'] is not None:
+            fecha = data['fecha']
+            if isinstance(fecha, str):
+                fecha = fecha.strip()[:10]
+            updates.append("fecha = %s")
+            params.append(fecha)
+        if 'comentarioevaluador' in data:
+            updates.append("comentarioevaluador = %s")
+            params.append(data.get('comentarioevaluador') or None)
+        if 'comentarioevaluado' in data:
+            updates.append("comentarioevaluado = %s")
+            params.append(data.get('comentarioevaluado') or None)
+        if 'notafinal' in data and data['notafinal'] is not None:
+            updates.append("notafinal = %s")
+            params.append(int(data['notafinal']))
+        if 'factorbono' in data:
+            updates.append("factorbono = %s")
+            params.append(data.get('factorbono'))
+        if 'firmaevaluador' in data:
+            updates.append("firmaevaluador = %s")
+            params.append(data.get('firmaevaluador') or None)
+        if 'firmaevaluado' in data:
+            updates.append("firmaevaluado = %s")
+            params.append(data.get('firmaevaluado') or None)
+        if 'id_sucursal' in data and data['id_sucursal'] is not None:
+            updates.append("id_sucursal = %s")
+            params.append(data['id_sucursal'])
+
+        if updates:
+            params.append(id_evaluacion)
+            cursor.execute(
+                "UPDATE rrhh_fact_evaluacion SET " + ", ".join(updates) + " WHERE id = %s",
+                params
+            )
+
+        if 'competencias' in data:
+            cursor.execute("DELETE FROM rrhh_fact_evaluacioncompetencia WHERE id_evaluacion = %s", (id_evaluacion,))
+            id_cargo_evdo = int(id_cargoevaluado)
+            for item in data.get('competencias') or []:
+                if not isinstance(item, dict):
+                    continue
+                nota = item.get('nota') if item.get('nota') is not None else item.get('puntuacion')
+                if nota is None:
+                    continue
+                id_cargocompetencia = item.get('id_cargocompetencia')
+                if id_cargocompetencia is None:
+                    id_competencianivel = item.get('id_competencianivel') or item.get('id')
+                    if id_competencianivel is None:
+                        continue
+                    try:
+                        id_cn = int(id_competencianivel)
+                    except (TypeError, ValueError):
+                        continue
+                    cursor.execute(
+                        "SELECT id FROM rrhh_pivot_cargocompetencia WHERE id_cargo = %s AND id_competencianivel = %s",
+                        (id_cargo_evdo, id_cn)
+                    )
+                    pivot = cursor.fetchone()
+                    if pivot:
+                        id_cargocompetencia = pivot['id']
+                    else:
+                        cursor.execute(
+                            "INSERT INTO rrhh_pivot_cargocompetencia (id_cargo, id_competencianivel) VALUES (%s, %s)",
+                            (id_cargo_evdo, id_cn)
+                        )
+                        id_cargocompetencia = cursor.lastrowid
+                else:
+                    try:
+                        id_cargocompetencia = int(id_cargocompetencia)
+                    except (TypeError, ValueError):
+                        continue
+                cursor.execute("""
+                    INSERT INTO rrhh_fact_evaluacioncompetencia (id, id_evaluacion, id_cargocompetencia, nota)
+                    VALUES (%s, %s, %s, %s)
+                """, (str(uuid.uuid4()), id_evaluacion, id_cargocompetencia, int(nota)))
+
+        if 'funciones' in data:
+            cursor.execute("DELETE FROM rrhh_fact_evaluacionfuncion WHERE id_evaluacion = %s", (id_evaluacion,))
+            for item in data.get('funciones') or []:
+                id_cargofuncion = item.get('id_cargofuncion')
+                nota = item.get('nota')
+                if id_cargofuncion is None or nota is None:
+                    continue
+                cursor.execute("""
+                    INSERT INTO rrhh_fact_evaluacionfuncion (id, id_evaluacion, id_cargofuncion, nota)
+                    VALUES (%s, %s, %s, %s)
+                """, (str(uuid.uuid4()), id_evaluacion, int(id_cargofuncion), int(nota)))
+
+        if 'plan_trabajo' in data:
+            cursor.execute("DELETE FROM rrhh_fact_plantrabajo WHERE id_evaluacion = %s", (id_evaluacion,))
+            for item in data.get('plan_trabajo') or []:
+                cursor.execute("""
+                    INSERT INTO rrhh_fact_plantrabajo (id, id_evaluacion, objetivo, accionesesperadas, seguimiento, fechalimitetermino)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    str(uuid.uuid4()), id_evaluacion,
+                    (item.get('objetivo') or None),
+                    (item.get('accionesesperadas') or None),
+                    (item.get('seguimiento') or None),
+                    item.get('fechalimitetermino')
+                ))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"id_evaluacion": id_evaluacion, "mensaje": "Evaluación actualizada correctamente"}), 200
+    except Exception as e:
+        logger.exception("Error en actualizar_evaluacion")
+        return jsonify({"error": str(e)}), 500
+
+
+@evaluador_bp.route('/evaluaciones/<id_evaluacion>', methods=['DELETE', 'OPTIONS'])
+@jwt_required()
+def eliminar_evaluacion(id_evaluacion):
+    """Elimina una evaluación. Solo el usuario que es id_usuarioevaluador puede eliminarla."""
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        usuario_id = get_jwt_identity()
+        if not usuario_id:
+            return jsonify({"error": "Usuario no identificado"}), 401
+        usuario_id = str(usuario_id).strip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT f.id FROM rrhh_fact_evaluacion f
+            INNER JOIN rrhh_dim_colaboradorevaluacion d
+                ON d.id_evaluador = f.id_evaluador AND d.id_evaluado = f.id_evaluado
+            WHERE f.id = %s AND TRIM(COALESCE(d.id_usuarioevaluador,'')) = TRIM(%s)
+        """, (id_evaluacion, usuario_id))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Evaluación no encontrada o no tiene permiso para eliminarla"}), 404
+
+        cursor.execute("DELETE FROM rrhh_fact_evaluacioncompetencia WHERE id_evaluacion = %s", (id_evaluacion,))
+        cursor.execute("DELETE FROM rrhh_fact_evaluacionfuncion WHERE id_evaluacion = %s", (id_evaluacion,))
+        cursor.execute("DELETE FROM rrhh_fact_plantrabajo WHERE id_evaluacion = %s", (id_evaluacion,))
+        cursor.execute("DELETE FROM rrhh_fact_evaluacion WHERE id = %s", (id_evaluacion,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"mensaje": "Evaluación eliminada correctamente"}), 200
+    except Exception as e:
+        logger.exception("Error en eliminar_evaluacion")
+        return jsonify({"error": str(e)}), 500
+
+
 def _nombre_completo(r, prefijo):
     """Arma nombre completo desde nombre + apellido_paterno + apellido_materno de general_dim_colaborador."""
     n = r.get(prefijo + '_nombre') or ''
