@@ -17,7 +17,11 @@ def create_app():
     # Configurar CORS
     CORS(app, resources={
         r"/*": {
-            "origins": ["http://localhost:*", "http://127.0.0.1:*", "http://192.168.1.52:*", "http://192.168.1.208:*", "http://192.168.1.60:*"],
+            "origins": [
+                "http://localhost:*", "http://127.0.0.1:*",
+                "http://192.168.1.52:*", "http://192.168.1.208:*", "http://192.168.1.60:*",
+                "https://*.run.app", "https://*.web.app", "https://*.firebaseapp.com",
+            ],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
             "supports_credentials": True,
@@ -64,6 +68,11 @@ def create_app():
     # Importar y registrar las rutas raíz
     from blueprints.opciones import obtener_sucursales
     root_bp.add_url_rule('/sucursales/', 'obtener_sucursales', obtener_sucursales, methods=['GET', 'OPTIONS'])
+
+    # Health check sin BD (para Cloud Run / load balancer)
+    @root_bp.route('/health', methods=['GET'])
+    def health():
+        return {"status": "ok", "service": "api-evaluacion"}, 200
 
     # Endpoint de prueba para verificar conexión a BD
     @root_bp.route('/test-db', methods=['GET'])

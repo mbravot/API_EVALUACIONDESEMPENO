@@ -74,6 +74,30 @@ Configúralas en el servicio (Cloud Run → tu servicio → **Variables and secr
 
 ---
 
+## Error 504 / "no carga la API"
+
+Si las peticiones devuelven **504** con latencia ~300 s, la causa suele ser que **Cloud Run no puede conectar con MySQL** (la conexión se queda colgada).
+
+**Qué se hizo en código:**
+- **Timeout de conexión a BD (10 s)** en `utils/db.py`: si la BD no responde, falla en 10 s y verás un 500 con mensaje en lugar de 504 a los 300 s.
+- **GET /api/health**: responde sin usar la BD. Prueba `https://tu-url.run.app/api/health`; si devuelve `{"status":"ok"}`, el servicio está arriba y el fallo es la base de datos.
+
+**Qué debes hacer en GCP:**
+
+1. **Si la BD está en Cloud SQL**
+   - En el servicio de Cloud Run → **Connections** (o **Variables and secrets**): añade la **Cloud SQL connection** (tu instancia).
+   - Configura `DATABASE_URL` con el formato de Cloud SQL, por ejemplo:
+     - `mysql+pymysql://USER:PASSWORD@/NOMBRE_BD?unix_socket=/cloudsql/PROYECTO:REGION:INSTANCIA`
+   - La instancia debe estar en la misma red / VPC que use Cloud Run o usar el conector de Cloud SQL.
+
+2. **Si la BD está en otro servidor (no Cloud SQL)**
+   - Cloud Run por defecto no puede llegar a IPs privadas ni a muchos hosts externos sin más configuración.
+   - Opciones: usar **Cloud SQL** (recomendado), o **VPC Connector** para que Cloud Run hable con tu red y llegue al MySQL.
+
+Tras configurar bien la conexión a la BD, las rutas que usan datos (login, sucursales, etc.) deberían dejar de dar 504.
+
+---
+
 ## Build local (probar la imagen)
 
 ```bash

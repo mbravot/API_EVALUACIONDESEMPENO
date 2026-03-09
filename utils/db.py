@@ -34,7 +34,8 @@ def get_db_connection():
                 'password': password,
                 'database': database,
                 'port': 3306,
-                'unix_socket': f'/cloudsql/{instance}'
+                'unix_socket': f'/cloudsql/{instance}',
+                'connection_timeout': 10,
             }
             logger.info(f"🔗 Parámetros de conexión: {connection_params}")
             
@@ -77,7 +78,8 @@ def get_db_connection():
                                 'password': password,
                                 'database': database,
                                 'port': 3306,
-                                'unix_socket': f'/cloudsql/{instance}'
+                                'unix_socket': f'/cloudsql/{instance}',
+                                'connection_timeout': 10,
                             }
                             logger.info(f"🔗 Parámetros de conexión: {connection_params}")
                             
@@ -101,7 +103,8 @@ def get_db_connection():
                     user=user,
                     password=password,
                     database=database,
-                    port=3306
+                    port=3306,
+                    connection_timeout=10,
                 )
             else:
                 # Formato sin host (localhost implícito)
@@ -114,7 +117,8 @@ def get_db_connection():
                     user=user,
                     password=password,
                     database=database,
-                    port=3306
+                    port=3306,
+                    connection_timeout=10,
                 )
     else:
         logger.info("🔄 Usando configuración anterior (sin DATABASE_URL)")
@@ -124,5 +128,6 @@ def get_db_connection():
             user=Config.DB_USER,
             password=Config.DB_PASSWORD,
             database=Config.DB_NAME,
-            port=Config.DB_PORT
+            port=Config.DB_PORT,
+            connection_timeout=10,
         )
