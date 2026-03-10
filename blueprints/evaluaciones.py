@@ -8,6 +8,71 @@ logger = logging.getLogger(__name__)
 evaluaciones_bp = Blueprint('evaluaciones_bp', __name__)
 
 
+# Estadísticas globales para el Dashboard
+@evaluaciones_bp.route('/estadisticas', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def get_estadisticas():
+    """
+    Devuelve total asignadas, realizadas, pendientes y desglose por sucursal.
+    Esperado por el front: total_asignadas, realizadas, pendientes, por_sucursal[].
+    """
+    if request.method == 'OPTIONS':
+        return '', 200
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Totales globales: asignadas = dim, realizadas = fact (por par evaluador-evaluado)
+        cursor.execute("""
+            SELECT
+                (SELECT COUNT(*) FROM rrhh_dim_colaboradorevaluacion) AS total_asignadas,
+                (SELECT COUNT(*) FROM rrhh_fact_evaluacion) AS realizadas
+        """)
+        row = cursor.fetchone()
+        total_asignadas = int(row['total_asignadas']) if row else 0
+        realizadas = int(row['realizadas']) if row else 0
+        pendientes = max(0, total_asignadas - realizadas)
+
+        # Por sucursal: total, realizadas, pendientes (sucursal desde la dimensión)
+        cursor.execute("""
+            SELECT
+                COALESCE(s.nombre, 'Sin sucursal') AS sucursal,
+                COUNT(d.id) AS total,
+                COUNT(f.id) AS realizadas
+            FROM rrhh_dim_colaboradorevaluacion d
+            LEFT JOIN rrhh_fact_evaluacion f
+                ON d.id_evaluador = f.id_evaluador AND d.id_evaluado = f.id_evaluado
+            LEFT JOIN general_dim_sucursal s ON d.id_sucursal = s.id
+            GROUP BY d.id_sucursal, s.nombre
+            ORDER BY sucursal
+        """)
+        filas_sucursal = cursor.fetchall()
+        por_sucursal = []
+        for r in filas_sucursal:
+            total_suc = int(r['total']) if r.get('total') is not None else 0
+            real_suc = int(r['realizadas']) if r.get('realizadas') is not None else 0
+            pend_suc = max(0, total_suc - real_suc)
+            por_sucursal.append({
+                'sucursal': r.get('sucursal') or 'Sin sucursal',
+                'total': total_suc,
+                'realizadas': real_suc,
+                'pendientes': pend_suc,
+            })
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'total_asignadas': total_asignadas,
+            'realizadas': realizadas,
+            'pendientes': pendientes,
+            'por_sucursal': por_sucursal,
+        }), 200
+    except Exception as e:
+        logger.exception("Error en get_estadisticas")
+        return jsonify({"error": str(e)}), 500
+
+
 def _nombre_completo(r, prefijo):
     """Arma nombre completo desde nombre + apellido_paterno + apellido_materno de general_dim_colaborador."""
     n = r.get(prefijo + '_nombre') or ''
