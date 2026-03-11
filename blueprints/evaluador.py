@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from utils.db import get_db_connection
+from blueprints.permisos import tiene_permiso_acceso_pantalla
 import logging
 import uuid
 
@@ -133,7 +134,7 @@ def obtener_mis_evaluaciones():
                 'fecha': r['fecha'].isoformat() if r.get('fecha') else None,
                 'comentarioevaluador': r.get('comentarioevaluador'),
                 'comentarioevaluado': r.get('comentarioevaluado'),
-                'notafinal': int(r['notafinal']) if r.get('notafinal') is not None else None,
+                'notafinal': round(float(r['notafinal']), 2) if r.get('notafinal') is not None else None,
                 'factorbono': int(r['factorbono']) if r.get('factorbono') is not None else None,
                 'firmaevaluador': r.get('firmaevaluador'),
                 'firmaevaluado': r.get('firmaevaluado'),
@@ -308,7 +309,7 @@ def crear_evaluacion():
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 id_evaluacion, id_evaluador, id_cargoevaluador, id_evaluado, id_cargoevaluado, fecha,
-                comentarioevaluador, comentarioevaluado, int(notafinal), factorbono, firmaevaluador, firmaevaluado, id_sucursal
+                comentarioevaluador, comentarioevaluado, round(float(notafinal), 2), factorbono, firmaevaluador, firmaevaluado, id_sucursal
             ))
 
             competencias = data.get('competencias') or []
@@ -400,7 +401,8 @@ def crear_evaluacion():
 @jwt_required()
 def actualizar_evaluacion(id_evaluacion):
     """
-    Actualiza una evaluación existente. Solo el usuario que es id_usuarioevaluador puede editarla.
+    Actualiza una evaluación existente. Puede editarla el usuario que es id_usuarioevaluador de esa evaluación
+    o cualquier usuario con permiso de acceso a pantalla (ver todas las evaluaciones).
     Body: mismos campos que crear (fecha, comentarioevaluador, comentarioevaluado, notafinal, factorbono,
     firmaevaluador, firmaevaluado, id_sucursal, competencias, funciones, plan_trabajo). Los enviados reemplazan.
     """
@@ -415,6 +417,7 @@ def actualizar_evaluacion(id_evaluacion):
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+        # Permiso si es el evaluador de esta evaluación
         cursor.execute("""
             SELECT f.id, f.id_evaluador, f.id_evaluado, f.id_cargoevaluado
             FROM rrhh_fact_evaluacion f
@@ -423,6 +426,13 @@ def actualizar_evaluacion(id_evaluacion):
             WHERE f.id = %s AND TRIM(COALESCE(d.id_usuarioevaluador,'')) = TRIM(%s)
         """, (id_evaluacion, usuario_id))
         ev = cursor.fetchone()
+        # Si no es el evaluador, permitir si tiene permiso de acceso a pantalla (ver/gestión de todas)
+        if not ev and tiene_permiso_acceso_pantalla(usuario_id):
+            cursor.execute("""
+                SELECT f.id, f.id_evaluador, f.id_evaluado, f.id_cargoevaluado
+                FROM rrhh_fact_evaluacion f WHERE f.id = %s
+            """, (id_evaluacion,))
+            ev = cursor.fetchone()
         if not ev:
             cursor.close()
             conn.close()
@@ -445,7 +455,7 @@ def actualizar_evaluacion(id_evaluacion):
             params.append(data.get('comentarioevaluado') or None)
         if 'notafinal' in data and data['notafinal'] is not None:
             updates.append("notafinal = %s")
-            params.append(int(data['notafinal']))
+            params.append(round(float(data['notafinal']), 2))
         if 'factorbono' in data:
             updates.append("factorbono = %s")
             params.append(data.get('factorbono'))
@@ -545,7 +555,8 @@ def actualizar_evaluacion(id_evaluacion):
 @evaluador_bp.route('/evaluaciones/<id_evaluacion>', methods=['DELETE', 'OPTIONS'])
 @jwt_required()
 def eliminar_evaluacion(id_evaluacion):
-    """Elimina una evaluación. Solo el usuario que es id_usuarioevaluador puede eliminarla."""
+    """Elimina una evaluación. Puede eliminarla el usuario que es id_usuarioevaluador de esa evaluación
+    o cualquier usuario con permiso de acceso a pantalla (ver todas las evaluaciones)."""
     if request.method == 'OPTIONS':
         return '', 200
     try:
@@ -562,7 +573,11 @@ def eliminar_evaluacion(id_evaluacion):
                 ON d.id_evaluador = f.id_evaluador AND d.id_evaluado = f.id_evaluado
             WHERE f.id = %s AND TRIM(COALESCE(d.id_usuarioevaluador,'')) = TRIM(%s)
         """, (id_evaluacion, usuario_id))
-        if not cursor.fetchone():
+        puede = cursor.fetchone() is not None
+        if not puede and tiene_permiso_acceso_pantalla(usuario_id):
+            cursor.execute("SELECT id FROM rrhh_fact_evaluacion WHERE id = %s", (id_evaluacion,))
+            puede = cursor.fetchone() is not None
+        if not puede:
             cursor.close()
             conn.close()
             return jsonify({"error": "Evaluación no encontrada o no tiene permiso para eliminarla"}), 404

@@ -11,6 +11,23 @@ permisos_bp = Blueprint('permisos_bp', __name__)
 ID_PERMISO_ACCESO_PANTALLA = "7"
 
 
+def tiene_permiso_acceso_pantalla(usuario_id):
+    """Indica si el usuario tiene permiso de acceso a pantalla (id=7). Usado para permitir ver/editar/eliminar todas las evaluaciones."""
+    if not usuario_id:
+        return False
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 1 FROM usuario_pivot_permiso_usuario pu
+        INNER JOIN usuario_dim_permiso p ON pu.id_permiso = p.id
+        WHERE pu.id_usuario = %s AND p.id = %s AND p.id_estado = 1
+    """, (str(usuario_id).strip(), ID_PERMISO_ACCESO_PANTALLA))
+    tiene = cursor.fetchone() is not None
+    cursor.close()
+    conn.close()
+    return tiene
+
+
 @permisos_bp.route('/acceso-pantalla', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def acceso_pantalla():

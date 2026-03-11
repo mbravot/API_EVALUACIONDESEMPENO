@@ -197,7 +197,7 @@ def listar_todas_evaluaciones():
                 'fecha': r['fecha'].isoformat() if r.get('fecha') else None,
                 'comentarioevaluador': r.get('comentarioevaluador'),
                 'comentarioevaluado': r.get('comentarioevaluado'),
-                'notafinal': int(r['notafinal']) if r.get('notafinal') is not None else None,
+                'notafinal': round(float(r['notafinal']), 2) if r.get('notafinal') is not None else None,
                 'factorbono': int(r['factorbono']) if r.get('factorbono') is not None else None,
                 'firmaevaluador': r.get('firmaevaluador'),
                 'firmaevaluado': r.get('firmaevaluado'),
