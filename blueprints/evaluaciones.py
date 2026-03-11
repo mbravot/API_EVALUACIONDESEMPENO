@@ -151,7 +151,7 @@ def listar_todas_evaluaciones():
 
         cursor.execute(f"""
             SELECT ec.id_evaluacion, ec.id_cargocompetencia, ec.nota,
-                   c.nombre AS nombre_competencia
+                   cc.id_competencianivel, c.nombre AS nombre_competencia, cn.definicion
             FROM rrhh_fact_evaluacioncompetencia ec
             LEFT JOIN rrhh_pivot_cargocompetencia cc ON ec.id_cargocompetencia = cc.id
             LEFT JOIN rrhh_dim_competencianivel cn ON cc.id_competencianivel = cn.id
@@ -165,9 +165,10 @@ def listar_todas_evaluaciones():
             if eid not in competencias_por_eval:
                 competencias_por_eval[eid] = []
             competencias_por_eval[eid].append({
-                'id_cargocompetencia': row['id_cargocompetencia'],
+                'id_competencianivel': int(row['id_competencianivel']) if row.get('id_competencianivel') is not None else None,
                 'nota': int(row['nota']) if row.get('nota') is not None else None,
                 'nombre_competencia': row.get('nombre_competencia'),
+                'definicion': row.get('definicion'),
             })
 
         cursor.execute(f"""
