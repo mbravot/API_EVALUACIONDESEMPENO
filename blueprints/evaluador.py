@@ -109,7 +109,7 @@ def obtener_mis_evaluaciones():
 
         # Plan de trabajo por evaluación
         cursor.execute(f"""
-            SELECT id_evaluacion, objetivo, accionesesperadas, seguimiento, fechalimitetermino
+            SELECT id_evaluacion, objetivo, accionesesperadas, aspectosamejorar, fechalimitetermino
             FROM rrhh_fact_plantrabajo
             WHERE id_evaluacion IN ({placeholders})
         """, ids_evaluacion)
@@ -122,7 +122,7 @@ def obtener_mis_evaluaciones():
             plan_por_eval[eid].append({
                 'objetivo': row.get('objetivo'),
                 'accionesesperadas': row.get('accionesesperadas'),
-                'seguimiento': row.get('seguimiento'),
+                'aspectosamejorar': int(row['aspectosamejorar']) if row.get('aspectosamejorar') is not None else None,
                 'fechalimitetermino': row['fechalimitetermino'].isoformat() if row.get('fechalimitetermino') else None,
             })
 
@@ -135,7 +135,7 @@ def obtener_mis_evaluaciones():
                 'comentarioevaluador': r.get('comentarioevaluador'),
                 'comentarioevaluado': r.get('comentarioevaluado'),
                 'notafinal': round(float(r['notafinal']), 2) if r.get('notafinal') is not None else None,
-                'factorbono': int(r['factorbono']) if r.get('factorbono') is not None else None,
+                'factorbono': round(float(r['factorbono']), 2) if r.get('factorbono') is not None else None,
                 'firmaevaluador': r.get('firmaevaluador'),
                 'firmaevaluado': r.get('firmaevaluado'),
                 'id_evaluador': r.get('id_evaluador'),
@@ -369,14 +369,16 @@ def crear_evaluacion():
 
             plan_trabajo = data.get('plan_trabajo') or []
             for item in plan_trabajo:
+                aspectos = item.get('aspectosamejorar')
+                aspectos = int(aspectos) if aspectos is not None else None
                 cursor.execute("""
-                    INSERT INTO rrhh_fact_plantrabajo (id, id_evaluacion, objetivo, accionesesperadas, seguimiento, fechalimitetermino)
+                    INSERT INTO rrhh_fact_plantrabajo (id, id_evaluacion, objetivo, accionesesperadas, aspectosamejorar, fechalimitetermino)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """, (
                     str(uuid.uuid4()), id_evaluacion,
                     (item.get('objetivo') or None),
                     (item.get('accionesesperadas') or None),
-                    (item.get('seguimiento') or None),
+                    aspectos,
                     item.get('fechalimitetermino')
                 ))
 
@@ -532,14 +534,16 @@ def actualizar_evaluacion(id_evaluacion):
         if 'plan_trabajo' in data:
             cursor.execute("DELETE FROM rrhh_fact_plantrabajo WHERE id_evaluacion = %s", (id_evaluacion,))
             for item in data.get('plan_trabajo') or []:
+                aspectos = item.get('aspectosamejorar')
+                aspectos = int(aspectos) if aspectos is not None else None
                 cursor.execute("""
-                    INSERT INTO rrhh_fact_plantrabajo (id, id_evaluacion, objetivo, accionesesperadas, seguimiento, fechalimitetermino)
+                    INSERT INTO rrhh_fact_plantrabajo (id, id_evaluacion, objetivo, accionesesperadas, aspectosamejorar, fechalimitetermino)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """, (
                     str(uuid.uuid4()), id_evaluacion,
                     (item.get('objetivo') or None),
                     (item.get('accionesesperadas') or None),
-                    (item.get('seguimiento') or None),
+                    aspectos,
                     item.get('fechalimitetermino')
                 ))
 

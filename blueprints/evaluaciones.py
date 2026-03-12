@@ -172,7 +172,7 @@ def listar_todas_evaluaciones():
             })
 
         cursor.execute(f"""
-            SELECT id_evaluacion, objetivo, accionesesperadas, seguimiento, fechalimitetermino
+            SELECT id_evaluacion, objetivo, accionesesperadas, aspectosamejorar, fechalimitetermino
             FROM rrhh_fact_plantrabajo
             WHERE id_evaluacion IN ({placeholders})
         """, ids_evaluacion)
@@ -185,7 +185,7 @@ def listar_todas_evaluaciones():
             plan_por_eval[eid].append({
                 'objetivo': row.get('objetivo'),
                 'accionesesperadas': row.get('accionesesperadas'),
-                'seguimiento': row.get('seguimiento'),
+                'aspectosamejorar': int(row['aspectosamejorar']) if row.get('aspectosamejorar') is not None else None,
                 'fechalimitetermino': row['fechalimitetermino'].isoformat() if row.get('fechalimitetermino') else None,
             })
 
@@ -198,7 +198,7 @@ def listar_todas_evaluaciones():
                 'comentarioevaluador': r.get('comentarioevaluador'),
                 'comentarioevaluado': r.get('comentarioevaluado'),
                 'notafinal': round(float(r['notafinal']), 2) if r.get('notafinal') is not None else None,
-                'factorbono': int(r['factorbono']) if r.get('factorbono') is not None else None,
+                'factorbono': round(float(r['factorbono']), 2) if r.get('factorbono') is not None else None,
                 'firmaevaluador': r.get('firmaevaluador'),
                 'firmaevaluado': r.get('firmaevaluado'),
                 'id_evaluador': r.get('id_evaluador'),
