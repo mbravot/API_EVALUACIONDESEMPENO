@@ -53,6 +53,8 @@ def create_app():
     from blueprints.competencias import competencias_bp
     from blueprints.evaluaciones import evaluaciones_bp
     from blueprints.permisos import permisos_bp
+    from blueprints.colaborador import colaborador_bp
+    from blueprints.colaboradores import colaboradores_bp
 
     # Registrar blueprints
     app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
@@ -64,6 +66,8 @@ def create_app():
     app.register_blueprint(funciones_bp, url_prefix="/api/funciones")
     app.register_blueprint(cargos_bp, url_prefix="/api/cargos")
     app.register_blueprint(competencias_bp, url_prefix="/api/competencias")
+    app.register_blueprint(colaborador_bp, url_prefix="/api/colaboradorevaluacion")
+    app.register_blueprint(colaboradores_bp, url_prefix="/api/colaboradores")
 
     # Crear un nuevo blueprint para las rutas raíz
     root_bp = Blueprint('root_bp', __name__)
