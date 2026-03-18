@@ -321,21 +321,83 @@ def actualizar_colaboradorevaluacion(id):
 @colaborador_bp.route('/<int:id>', methods=['DELETE', 'OPTIONS'])
 @jwt_required()
 def eliminar_colaboradorevaluacion(id):
-    """Elimina un registro de rrhh_dim_colaboradorevaluacion."""
+    """Elimina un registro de rrhh_dim_colaboradorevaluacion.
+
+    Regla de negocio esperada:
+    - Si existe evaluación registrada para el mismo par (id_evaluador, id_evaluado), no se permite eliminar.
+    - Si el evaluador tiene evaluaciones para otros evaluados, se debe permitir eliminar esta asignación.
+    """
     if request.method == 'OPTIONS':
         return '', 200
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM rrhh_dim_colaboradorevaluacion WHERE id = %s", (id,))
-        conn.commit()
-        if cursor.rowcount == 0:
+        cursor = conn.cursor(dictionary=True)
+
+        # Buscar la asignación para conocer el par evaluador/evaluado
+        cursor.execute(
+            "SELECT id, id_evaluador, id_evaluado FROM rrhh_dim_colaboradorevaluacion WHERE id = %s",
+            (id,),
+        )
+        ce = cursor.fetchone()
+        if not ce:
             cursor.close()
             conn.close()
             return jsonify({"error": "Registro no encontrado"}), 404
-        cursor.close()
-        conn.close()
+
+        id_evaluador = ce["id_evaluador"]
+        id_evaluado = ce["id_evaluado"]
+
+        try:
+            # Bloqueamos solo si hay evaluación registrada para el mismo par evaluador/evaluado.
+            cursor.execute(
+                "SELECT COUNT(*) AS total_eval_evaluador FROM rrhh_fact_evaluacion WHERE id_evaluador = %s",
+                (id_evaluador,),
+            )
+            total_eval_evaluador_row = cursor.fetchone()
+            total_eval_evaluador = int(total_eval_evaluador_row["total_eval_evaluador"]) if total_eval_evaluador_row and total_eval_evaluador_row.get("total_eval_evaluador") is not None else 0
+
+            cursor.execute(
+                "SELECT COUNT(*) AS total FROM rrhh_fact_evaluacion WHERE id_evaluador = %s AND id_evaluado = %s",
+                (id_evaluador, id_evaluado),
+            )
+            total = cursor.fetchone()
+            total = int(total["total"]) if total and total.get("total") is not None else 0
+            if total > 0:
+                conn.rollback()
+                cursor.close()
+                conn.close()
+                return jsonify({
+                    "error": "No se puede eliminar la asignación porque existe una evaluación registrada para este evaluador y evaluado.",
+                    "detalle": {
+                        "id_dim_colaboradorevaluacion": id,
+                        "id_evaluador": id_evaluador,
+                        "id_evaluado": id_evaluado,
+                        "evaluaciones_del_par": total,
+                        "evaluaciones_del_evaluador": total_eval_evaluador,
+                    }
+                }), 409
+
+            # Si no hay evaluación para el par, se elimina la asignación.
+            cursor.execute("DELETE FROM rrhh_dim_colaboradorevaluacion WHERE id = %s", (id,))
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+            conn.close()
+
         return jsonify({"mensaje": "Registro eliminado correctamente"}), 200
     except Exception as e:
         logger.exception("Error en eliminar_colaboradorevaluacion")
-        return jsonify({"error": str(e)}), 500
+        msg = str(e)
+        # FK mal modelada: si la FK de rrhh_fact_evaluacion referencia solo id_evaluador,
+        # no permitirá borrar una asignación aunque no exista evaluación para el par.
+        if "1451" in msg or "foreign key constraint fails" in msg.lower():
+            return jsonify({
+                "error": "No se puede eliminar la asignación por restricción de clave foránea (1451).",
+                "detalle": "La FK de rrhh_fact_evaluacion hacia rrhh_dim_colaboradorevaluacion probablemente está basada solo en id_evaluador. Para permitir borrar solo cuando no exista evaluación para el par (id_evaluador, id_evaluado), hay que ajustar la FK para que apunte al par o al id de la asignación.",
+                "mensaje_mysql": msg,
+            }), 409
+        return jsonify({"error": msg}), 500
