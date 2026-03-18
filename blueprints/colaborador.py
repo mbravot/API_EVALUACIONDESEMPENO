@@ -162,14 +162,18 @@ def crear_colaboradorevaluacion():
         return '', 200
     try:
         data = request.get_json() or {}
-        id_evaluador = (data.get('id_evaluador') or '').strip()
+        id_evaluador_raw = data.get('id_evaluador')
+        id_evaluador = (str(id_evaluador_raw).strip() if id_evaluador_raw is not None else '')
         id_cargoevaluador = data.get('id_cargoevaluador')
-        id_evaluado = (data.get('id_evaluado') or '').strip()
+        id_evaluado_raw = data.get('id_evaluado')
+        id_evaluado = (str(id_evaluado_raw).strip() if id_evaluado_raw is not None else '')
         id_cargoevaluado = data.get('id_cargoevaluado')
         id_sucursal = data.get('id_sucursal')
-        correo = (data.get('correo') or '').strip() or None
+        correo_raw = data.get('correo')
+        correo = (str(correo_raw).strip() if correo_raw is not None else '') or None
         id_nivel = data.get('id_nivel')
-        id_usuarioevaluador = (data.get('id_usuarioevaluador') or '').strip() or None
+        id_usuarioevaluador_raw = data.get('id_usuarioevaluador')
+        id_usuarioevaluador = (str(id_usuarioevaluador_raw).strip() if id_usuarioevaluador_raw is not None else '') or None
 
         if not id_evaluador or id_cargoevaluador is None or not id_evaluado or id_cargoevaluado is None or id_sucursal is None:
             return jsonify({
@@ -236,7 +240,7 @@ def actualizar_colaboradorevaluacion(id):
         id_nivel = data.get('id_nivel')
         id_usuarioevaluador = data.get('id_usuarioevaluador')
         if id_usuarioevaluador is not None:
-            id_usuarioevaluador = (id_usuarioevaluador or '').strip() or None
+            id_usuarioevaluador = str(id_usuarioevaluador).strip() or None
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
