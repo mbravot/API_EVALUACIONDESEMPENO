@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from utils.db import get_db_connection
 import logging
 
@@ -187,6 +187,30 @@ def crear_colaboradorevaluacion():
             id_nivel = int(id_nivel)
 
         conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Autocompletar id_usuarioevaluador cuando no viene en el body.
+        # Se intenta resolver por correo (general_dim_usuario.correo). Si no hay match, se usa el usuario logueado.
+        if id_usuarioevaluador is None:
+            correo_lookup = correo
+            if not correo_lookup:
+                try:
+                    cursor.execute("SELECT correo FROM general_dim_colaborador WHERE id = %s", (id_evaluador,))
+                    col = cursor.fetchone()
+                    correo_lookup = (col.get("correo") if col else None)
+                except Exception:
+                    correo_lookup = None
+
+            if correo_lookup:
+                cursor.execute("SELECT id FROM general_dim_usuario WHERE TRIM(correo) = TRIM(%s) LIMIT 1", (correo_lookup,))
+                u = cursor.fetchone()
+                if u:
+                    id_usuarioevaluador = u.get("id")
+
+            if id_usuarioevaluador is None:
+                id_usuarioevaluador = str(get_jwt_identity()).strip() if get_jwt_identity() is not None else None
+
+        # Volver a cursor sin dict para inserts (cursor.lastrowid)
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO rrhh_dim_colaboradorevaluacion
